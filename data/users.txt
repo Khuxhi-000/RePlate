@@ -1,0 +1,7 @@
+ADMIN,1,System Admin,admin@replate.org,9876543210,Chandigarh,admin,admin123,ADM-001
+DONOR,2,ABC College Mess,mess@abc.edu,9811122233,Chandigarh,abcmess,pass123,College Mess
+DONOR,3,Green Leaf Restaurant,contact@greenleaf.com,9822233344,Mohali,greenleaf,pass123,Restaurant
+NGO,4,Helping Hands NGO,info@helpinghands.org,9833344455,Chandigarh,helpinghands,pass123,NGO-CH-101,120
+NGO,5,Hope Foundation,contact@hopefdn.org,9844455566,Ludhiana,hopefdn,pass123,NGO-LD-202,80
+VOLUNTEER,6,Rahul,rahul@gmail.com,9855566677,Chandigarh,rahul,pass123,Bike,true
+VOLUNTEER,7,Aman,aman@gmail.com,9866677788,Mohali,aman,pass123,Car,true
