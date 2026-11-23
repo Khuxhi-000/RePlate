@@ -62,6 +62,54 @@ public class InputValidator {
     }
 
     /**
+     * Reads a valid email address from terminal.
+     * Loops until a valid email is entered.
+     */
+    public static String readValidEmail(String prompt) {
+        while (true) {
+            String input = readNonEmptyString(prompt);
+            try {
+                validateEmail(input);
+                return input;
+            } catch (ValidationException e) {
+                System.out.println(">> Error: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Reads a valid 10-digit Indian phone number from terminal.
+     * Loops until a valid phone number is entered.
+     */
+    public static String readValidPhone(String prompt) {
+        while (true) {
+            String input = readNonEmptyString(prompt);
+            try {
+                validatePhone(input);
+                return input;
+            } catch (ValidationException e) {
+                System.out.println(">> Error: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Reads a valid NGO registration number from terminal.
+     * Loops until a valid registration number is entered.
+     */
+    public static String readValidNgoRegNo(String prompt) {
+        while (true) {
+            String input = readNonEmptyString(prompt);
+            try {
+                validateNgoRegNo(input);
+                return input.toUpperCase();
+            } catch (ValidationException e) {
+                System.out.println(">> Error: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
      * Validates that quantity is greater than 0.
      */
     public static void validateQuantity(int quantity) throws ValidationException {
@@ -76,6 +124,35 @@ public class InputValidator {
     public static void validateRequiredText(String text, String fieldName) throws ValidationException {
         if (text == null || text.trim().isEmpty()) {
             throw new ValidationException(fieldName + " cannot be blank.");
+        }
+    }
+
+    /**
+     * Validates standard email address format.
+     */
+    public static void validateEmail(String email) throws ValidationException {
+        if (email == null || !email.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
+            throw new ValidationException("Invalid email format. Please enter a valid email (e.g., user@gmail.com).");
+        }
+    }
+
+    /**
+     * Validates 10-digit Indian mobile number format.
+     * Starts with 6, 7, 8, or 9 and contains exactly 10 digits.
+     */
+    public static void validatePhone(String phone) throws ValidationException {
+        if (phone == null || !phone.matches("^[6-9]\\d{9}$")) {
+            throw new ValidationException("Invalid phone number. Must be a valid 10-digit Indian mobile number (e.g., 9876543210).");
+        }
+    }
+
+    /**
+     * Validates NGO registration number format (e.g., NGO-CH-105).
+     * Must follow NGO-XX-XXX format.
+     */
+    public static void validateNgoRegNo(String regNo) throws ValidationException {
+        if (regNo == null || !regNo.trim().toUpperCase().matches("^NGO-[A-Z]{2,4}-[0-9]{3,6}$")) {
+            throw new ValidationException("Invalid NGO registration number. Expected format: NGO-XX-XXX (e.g., NGO-CH-105).");
         }
     }
 

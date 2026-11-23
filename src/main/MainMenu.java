@@ -100,8 +100,8 @@ public class MainMenu {
 
         int nextId = userManager.getNextUserId();
         String name = InputValidator.readNonEmptyString("Enter Full/Organization Name: ");
-        String email = InputValidator.readNonEmptyString("Enter Email: ");
-        String phone = InputValidator.readNonEmptyString("Enter Phone Number: ");
+        String email = InputValidator.readValidEmail("Enter Email: ");
+        String phone = InputValidator.readValidPhone("Enter Phone Number: ");
         System.out.println("Locations supported: Chandigarh, Mohali, Ludhiana, Barnala (or enter your city)");
         String address = InputValidator.readNonEmptyString("Enter Location/City: ");
 
@@ -123,7 +123,7 @@ public class MainMenu {
                 newUser = new Donor(nextId, name, email, phone, address, username, password, orgType);
                 break;
             case 2:
-                String regNo = InputValidator.readNonEmptyString("Enter NGO Registration Number (e.g. NGO-CH-105): ");
+                String regNo = InputValidator.readValidNgoRegNo("Enter NGO Registration Number (e.g. NGO-CH-105): ");
                 int peopleServed = InputValidator.readPositiveInt("Estimated number of people served daily: ");
                 newUser = new NGO(nextId, name, email, phone, address, username, password, regNo, peopleServed);
                 break;

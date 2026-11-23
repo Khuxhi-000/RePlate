@@ -176,6 +176,54 @@ public class SystemTest {
             assertCondition(true, "ValidationException caught for blank input: " + e.getMessage());
         }
 
+        // Email validation tests
+        try {
+            InputValidator.validateEmail("invalid-email");
+            assertCondition(false, "Invalid email should throw ValidationException");
+        } catch (ValidationException e) {
+            assertCondition(true, "ValidationException caught for invalid email: " + e.getMessage());
+        }
+        try {
+            InputValidator.validateEmail("user@gmail.com");
+            assertCondition(true, "Valid email user@gmail.com accepted");
+        } catch (ValidationException e) {
+            assertCondition(false, "Valid email threw unexpected exception: " + e.getMessage());
+        }
+
+        // Phone validation tests
+        try {
+            InputValidator.validatePhone("12345");
+            assertCondition(false, "Short phone number should throw ValidationException");
+        } catch (ValidationException e) {
+            assertCondition(true, "ValidationException caught for short phone: " + e.getMessage());
+        }
+        try {
+            InputValidator.validatePhone("abcdefghij");
+            assertCondition(false, "Alphabetic phone number should throw ValidationException");
+        } catch (ValidationException e) {
+            assertCondition(true, "ValidationException caught for alphabetic phone: " + e.getMessage());
+        }
+        try {
+            InputValidator.validatePhone("9876543210");
+            assertCondition(true, "Valid 10-digit phone 9876543210 accepted");
+        } catch (ValidationException e) {
+            assertCondition(false, "Valid phone threw unexpected exception: " + e.getMessage());
+        }
+
+        // NGO registration number validation tests
+        try {
+            InputValidator.validateNgoRegNo("12345");
+            assertCondition(false, "Invalid NGO reg number should throw ValidationException");
+        } catch (ValidationException e) {
+            assertCondition(true, "ValidationException caught for invalid NGO reg no: " + e.getMessage());
+        }
+        try {
+            InputValidator.validateNgoRegNo("NGO-CH-105");
+            assertCondition(true, "Valid NGO reg number NGO-CH-105 accepted");
+        } catch (ValidationException e) {
+            assertCondition(false, "Valid NGO reg no threw unexpected exception: " + e.getMessage());
+        }
+
         System.out.println("\n==================================================");
         System.out.println("   ALL TESTS PASSED SUCCESSFULLY! (100% READY)   ");
         System.out.println("==================================================");
