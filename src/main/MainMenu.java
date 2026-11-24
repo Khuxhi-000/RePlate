@@ -39,7 +39,8 @@ public class MainMenu {
                 assignmentManager, donationManager, userManager, requestManager, donationHistory, fileManager);
         this.donationMatcher = new DonationMatcher();
 
-        // Initialize and start the background donation-expiry checker thread (Multithreading)
+        // Initialize and start the background donation-expiry checker thread
+        // (Multithreading)
         this.expiryChecker = new DonationExpiryChecker(donationManager, 10000);
         this.expiryChecker.setDaemon(true); // Daemon thread runs concurrently in background
         this.expiryChecker.start();
@@ -107,7 +108,8 @@ public class MainMenu {
         System.out.println("4. Back to Main Menu");
 
         int roleChoice = InputValidator.readInt("Enter choice (1-4): ", 1, 4);
-        if (roleChoice == 4) return;
+        if (roleChoice == 4)
+            return;
 
         int nextId = userManager.getNextUserId();
         String name = InputValidator.readNonEmptyString("Enter Full/Organization Name: ");
@@ -130,7 +132,8 @@ public class MainMenu {
         User newUser = null;
         switch (roleChoice) {
             case 1:
-                String orgType = InputValidator.readNonEmptyString("Enter Organization Type (e.g. College Mess, Restaurant, Bakery): ");
+                String orgType = InputValidator
+                        .readNonEmptyString("Enter Organization Type (e.g. College Mess, Restaurant, Bakery): ");
                 newUser = new Donor(nextId, name, email, phone, address, username, password, orgType);
                 break;
             case 2:
@@ -231,20 +234,21 @@ public class MainMenu {
         for (int i = 0; i < categories.length; i++) {
             System.out.println((i + 1) + ". " + categories[i]);
         }
-        int catChoice = InputValidator.readInt("Enter category number (1-" + categories.length + "): ", 1, categories.length);
+        int catChoice = InputValidator.readInt("Enter category number (1-" + categories.length + "): ", 1,
+                categories.length);
         FoodCategory category = categories[catChoice - 1];
 
         int quantity = InputValidator.readPositiveInt("Quantity (number of packets/servings): ");
         String prepTime = InputValidator.readNonEmptyString("Preparation Time (e.g. 05:00 PM): ");
         String expiryTime = InputValidator.readNonEmptyString("Expiry Time (e.g. 09:00 PM): ");
-        
+
         System.out.println("Default Location from profile: " + donor.getAddress());
         String locChoice = InputValidator.readString("Press Enter to use profile location or enter new location: ");
         String location = locChoice.isEmpty() ? donor.getAddress() : locChoice;
 
         int newId = donationManager.getNextDonationId();
         FoodItem item = new FoodItem(foodName, category, true);
-        FoodDonation donation = new FoodDonation(newId, donor.getUserId(), donor.getName(), item, 
+        FoodDonation donation = new FoodDonation(newId, donor.getUserId(), donor.getName(), item,
                 quantity, prepTime, expiryTime, location, DonationStatus.AVAILABLE, LocalDate.now().toString());
 
         donationManager.addDonation(donation);
@@ -266,7 +270,8 @@ public class MainMenu {
                 singleList.add(donation);
                 FoodDonation match = donationMatcher.findBestMatch(req, singleList);
                 if (match != null) {
-                    System.out.println("\n>> Notice: A pending request from NGO '" + req.getNgoName() + "' matches this donation!");
+                    System.out.println("\n>> Notice: A pending request from NGO '" + req.getNgoName()
+                            + "' matches this donation!");
                     break;
                 }
             }

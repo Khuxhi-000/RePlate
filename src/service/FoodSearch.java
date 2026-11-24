@@ -18,7 +18,8 @@ public class FoodSearch {
 
     public static ArrayList<FoodDonation> searchByName(String name, ArrayList<FoodDonation> donations) {
         ArrayList<FoodDonation> results = new ArrayList<>();
-        if (name == null || name.trim().isEmpty()) return results;
+        if (name == null || name.trim().isEmpty())
+            return results;
         String query = name.toLowerCase().trim();
 
         for (FoodDonation d : donations) {
@@ -41,7 +42,8 @@ public class FoodSearch {
 
     public static ArrayList<FoodDonation> searchByLocation(String location, ArrayList<FoodDonation> donations) {
         ArrayList<FoodDonation> results = new ArrayList<>();
-        if (location == null || location.trim().isEmpty()) return results;
+        if (location == null || location.trim().isEmpty())
+            return results;
         String query = location.toLowerCase().trim();
 
         for (FoodDonation d : donations) {
@@ -65,9 +67,11 @@ public class FoodSearch {
      * Demonstrates ListIterator from Java Collections Framework.
      * Iterates through donations sequentially to filter exact city matches.
      */
-    public static ArrayList<FoodDonation> filterByLocationWithIterator(String location, ArrayList<FoodDonation> donations) {
+    public static ArrayList<FoodDonation> filterByLocationWithIterator(String location,
+            ArrayList<FoodDonation> donations) {
         ArrayList<FoodDonation> results = new ArrayList<>();
-        if (location == null || donations == null) return results;
+        if (location == null || donations == null)
+            return results;
         ListIterator<FoodDonation> listIterator = donations.listIterator();
         while (listIterator.hasNext()) {
             FoodDonation d = listIterator.next();
