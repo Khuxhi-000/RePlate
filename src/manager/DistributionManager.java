@@ -119,31 +119,32 @@ public class DistributionManager {
     }
 
     /**
-     * Displays a clean terminal receipt as required in the project specification.
+     * Displays a clean terminal receipt.
+     * Demonstrates StringBuilder for formatted multi-line text construction.
      */
     public void displayReceipt(VolunteerAssignment assignment, FoodDonation donation, 
                                DonationRequest req, String deliveryTime, String receiverName) {
         String donorName = donation != null ? donation.getDonorName() : "Partner Donor";
         String ngoName = req != null ? req.getNgoName() : "Partner NGO";
 
-        System.out.println("\n========================================");
-        System.out.println("      FOOD REDISTRIBUTION RECEIPT");
-        System.out.println("========================================");
-        System.out.println("Donation ID : " + assignment.getDonationId());
-        System.out.println("Assignment  : #" + assignment.getAssignmentId());
-        System.out.println("Donor       : " + donorName);
-        System.out.println("NGO         : " + ngoName);
-        System.out.println();
-        System.out.println("Food        : " + assignment.getFoodDetails());
-        System.out.println("Quantity    : " + assignment.getQuantity() + " packets");
-        System.out.println();
-        System.out.println("Delivered By: " + assignment.getVolunteerName());
-        System.out.println("Received By : " + receiverName);
-        System.out.println("Time        : " + deliveryTime);
-        System.out.println("Pickup      : Completed");
-        System.out.println("Delivery    : Completed");
-        System.out.println();
-        System.out.println("Thank you for helping reduce food waste.");
-        System.out.println("========================================\n");
+        StringBuilder receipt = new StringBuilder(256);
+        receipt.append("\n========================================\n");
+        receipt.append("      FOOD REDISTRIBUTION RECEIPT\n");
+        receipt.append("========================================\n");
+        receipt.append("Donation ID : ").append(assignment.getDonationId()).append("\n");
+        receipt.append("Assignment  : #").append(assignment.getAssignmentId()).append("\n");
+        receipt.append("Donor       : ").append(donorName).append("\n");
+        receipt.append("NGO         : ").append(ngoName).append("\n\n");
+        receipt.append("Food        : ").append(assignment.getFoodDetails()).append("\n");
+        receipt.append("Quantity    : ").append(assignment.getQuantity()).append(" packets\n\n");
+        receipt.append("Delivered By: ").append(assignment.getVolunteerName()).append("\n");
+        receipt.append("Received By : ").append(receiverName).append("\n");
+        receipt.append("Time        : ").append(deliveryTime).append("\n");
+        receipt.append("Pickup      : Completed\n");
+        receipt.append("Delivery    : Completed\n\n");
+        receipt.append("Thank you for helping reduce food waste.\n");
+        receipt.append("========================================\n");
+
+        System.out.print(receipt.toString());
     }
 }

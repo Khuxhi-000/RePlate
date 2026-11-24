@@ -32,7 +32,7 @@ import java.util.ArrayList;
  */
 public class SystemTest {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         System.out.println("==================================================");
         System.out.println("   REPLATE SYSTEM & WORKFLOW VERIFICATION TEST   ");
         System.out.println("==================================================");
@@ -223,6 +223,75 @@ public class SystemTest {
         } catch (ValidationException e) {
             assertCondition(false, "Valid NGO reg no threw unexpected exception: " + e.getMessage());
         }
+
+        // 20. 2D ARRAY DISTANCE MATRIX TEST
+        System.out.println("\n[Test 20] Testing 2D Distance Matrix Lookup...");
+        int distChdMohali = CityDistanceMatrix.getDistance("Chandigarh", "Mohali");
+        assertCondition(distChdMohali == 10, "2D Matrix lookup for Chandigarh-Mohali returned 10 km");
+        int distLudhianaBarnala = CityDistanceMatrix.getDistance("Ludhiana", "Barnala");
+        assertCondition(distLudhianaBarnala == 65, "2D Matrix lookup for Ludhiana-Barnala returned 65 km");
+        assertCondition(CityDistanceMatrix.isWithinRange("Chandigarh", "Mohali", 25), "Chandigarh-Mohali is within 25 km transfer range");
+        assertCondition(!CityDistanceMatrix.isWithinRange("Chandigarh", "Ludhiana", 50), "Chandigarh-Ludhiana exceeds 50 km local range");
+
+        // 21. MULTITHREADING & SYNCHRONIZATION TEST
+        System.out.println("\n[Test 21] Testing Multithreading & Synchronization (DonationExpiryChecker)...");
+        // Add an expired donation created yesterday
+        int expiredDonId = 999;
+        FoodDonation expiredDonation = new FoodDonation(expiredDonId, 2, "ABC College Mess",
+                new FoodItem("Old Curd", FoodCategory.COOKED_FOOD, true),
+                15, "08:00 AM", "12:00 PM", "Chandigarh", DonationStatus.AVAILABLE,
+                LocalDate.now().minusDays(1).toString());
+        donationManager.addDonation(expiredDonation);
+        assertCondition(expiredDonation.getStatus() == DonationStatus.AVAILABLE, "Donation added with AVAILABLE status before thread check");
+
+        // Start background expiry checker thread with short 100ms interval for testing
+        DonationExpiryChecker expiryChecker = new DonationExpiryChecker(donationManager, 100);
+        expiryChecker.setDaemon(true);
+        expiryChecker.start();
+        assertCondition(expiryChecker.isAlive(), "DonationExpiryChecker thread started and in RUNNABLE/alive state");
+
+        // Let the background thread execute its synchronized check cycle
+        Thread.sleep(300);
+
+        FoodDonation checkedDonation = donationManager.getDonationById(expiredDonId);
+        assertCondition(checkedDonation != null && checkedDonation.getStatus() == DonationStatus.EXPIRED,
+                "Background thread synchronized check successfully marked outdated donation as EXPIRED");
+
+        // Test thread interruption and clean termination with join()
+        expiryChecker.stopChecker();
+        assertCondition(!expiryChecker.isAlive(), "Background thread stopped cleanly via interrupt() and join()");
+
+        // 22. CUSTOM BUSINESS EXCEPTIONS TEST
+        System.out.println("\n[Test 22] Testing Custom Exceptions (DonationExpiredException & InsufficientQuantityException)...");
+        // Attempting to allocate an expired donation should throw DonationExpiredException
+        DonationRequest testReq = new DonationRequest(888, 4, "Test NGO", FoodCategory.COOKED_FOOD,
+                5, "Chandigarh", RequestPriority.LOW, "PENDING", LocalDate.now().toString());
+        try {
+            donationMatcher.allocateQuantity(checkedDonation, testReq);
+            assertCondition(false, "Allocating expired donation should throw DonationExpiredException");
+        } catch (DonationExpiredException e) {
+            assertCondition(true, "DonationExpiredException successfully caught: " + e.getMessage());
+        } catch (InsufficientQuantityException e) {
+            assertCondition(false, "Unexpected InsufficientQuantityException: " + e.getMessage());
+        }
+
+        // Attempting to allocate with 0 quantity should throw InsufficientQuantityException
+        FoodDonation zeroQtyDonation = new FoodDonation(998, 2, "ABC Mess",
+                new FoodItem("Soup", FoodCategory.COOKED_FOOD, true),
+                0, "06:00 PM", "11:00 PM", "Chandigarh", DonationStatus.AVAILABLE, LocalDate.now().toString());
+        try {
+            donationMatcher.allocateQuantity(zeroQtyDonation, testReq);
+            assertCondition(false, "Allocating 0 quantity should throw InsufficientQuantityException");
+        } catch (InsufficientQuantityException e) {
+            assertCondition(true, "InsufficientQuantityException successfully caught: " + e.getMessage());
+        } catch (DonationExpiredException e) {
+            assertCondition(false, "Unexpected DonationExpiredException: " + e.getMessage());
+        }
+
+        // 23. LISTITERATOR SEARCH TEST
+        System.out.println("\n[Test 23] Testing ListIterator from Java Collections Framework...");
+        ArrayList<FoodDonation> iteratorResults = FoodSearch.filterByLocationWithIterator("Chandigarh", donationManager.getAllDonations());
+        assertCondition(!iteratorResults.isEmpty(), "ListIterator successfully traversed and filtered donations in Chandigarh");
 
         System.out.println("\n==================================================");
         System.out.println("   ALL TESTS PASSED SUCCESSFULLY! (100% READY)   ");

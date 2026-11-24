@@ -25,6 +25,7 @@ public class MainMenu {
     private DonationHistory donationHistory;
     private DistributionManager distributionManager;
     private DonationMatcher donationMatcher;
+    private DonationExpiryChecker expiryChecker;
 
     public MainMenu() {
         // Initialize file management and managers
@@ -37,6 +38,11 @@ public class MainMenu {
         this.distributionManager = new DistributionManager(
                 assignmentManager, donationManager, userManager, requestManager, donationHistory, fileManager);
         this.donationMatcher = new DonationMatcher();
+
+        // Initialize and start the background donation-expiry checker thread (Multithreading)
+        this.expiryChecker = new DonationExpiryChecker(donationManager, 10000);
+        this.expiryChecker.setDaemon(true); // Daemon thread runs concurrently in background
+        this.expiryChecker.start();
     }
 
     public static void main(String[] args) {
@@ -77,7 +83,12 @@ public class MainMenu {
                     break;
                 case 6:
                     running = false;
-                    System.out.println("\nThank you for supporting RePlate Food Rescue Network. Goodbye!");
+                    System.out.println("\n[System] Stopping background expiry checker thread...");
+                    if (expiryChecker != null) {
+                        expiryChecker.stopChecker();
+                    }
+                    System.out.println("[System] Background thread stopped cleanly.");
+                    System.out.println("Thank you for supporting RePlate Food Rescue Network. Goodbye!");
                     break;
             }
         }
@@ -408,33 +419,41 @@ public class MainMenu {
 
             String confirm = InputValidator.readNonEmptyString("Do you want to allocate this food now? (yes/no): ");
             if (confirm.equalsIgnoreCase("yes") || confirm.equalsIgnoreCase("y")) {
-                int allocated = donationMatcher.allocateQuantity(match, request);
-                donationManager.save();
-                requestManager.save();
+                try {
+                    int allocated = donationMatcher.allocateQuantity(match, request);
+                    donationManager.save();
+                    requestManager.save();
 
-                System.out.println("\n>> Allocated Quantity: " + allocated + " packets");
-                System.out.println(">> Remaining in Donation: " + match.getQuantity() + " packets");
+                    System.out.println("\n>> Allocated Quantity: " + allocated + " packets");
+                    System.out.println(">> Remaining in Donation: " + match.getQuantity() + " packets");
 
-                // Assign volunteer
-                Volunteer volunteer = userManager.getAvailableVolunteer();
-                VolunteerAssignment assignment = assignmentManager.createAssignment(
-                        match.getDonationId(), request.getRequestId(), volunteer, match, request, allocated);
+                    // Calculate estimated transit distance using 2D CityDistanceMatrix
+                    int transitDistance = CityDistanceMatrix.getDistance(match.getLocation(), request.getLocation());
 
-                System.out.println("\n========================================");
-                System.out.println("         VOLUNTEER ASSIGNMENT");
-                System.out.println("========================================");
-                System.out.println("Assignment ID     : #" + assignment.getAssignmentId());
-                System.out.println("Assigned Volunteer: " + assignment.getVolunteerName());
-                System.out.println("Pickup Location   : " + assignment.getDonorLocation());
-                System.out.println("Delivery Location : " + assignment.getNgoLocation());
-                System.out.println("Status            : " + assignment.getStatus());
-                System.out.println("========================================");
+                    // Assign volunteer
+                    Volunteer volunteer = userManager.getAvailableVolunteer();
+                    VolunteerAssignment assignment = assignmentManager.createAssignment(
+                            match.getDonationId(), request.getRequestId(), volunteer, match, request, allocated);
 
-                if (volunteer == null) {
-                    System.out.println(">> Notice: All volunteers are currently busy. Assignment is queued for next available volunteer.");
-                } else {
-                    userManager.save();
-                    System.out.println(">> Volunteer has been notified for pickup!");
+                    System.out.println("\n========================================");
+                    System.out.println("         VOLUNTEER ASSIGNMENT");
+                    System.out.println("========================================");
+                    System.out.println("Assignment ID     : #" + assignment.getAssignmentId());
+                    System.out.println("Assigned Volunteer: " + assignment.getVolunteerName());
+                    System.out.println("Pickup Location   : " + assignment.getDonorLocation());
+                    System.out.println("Delivery Location : " + assignment.getNgoLocation());
+                    System.out.println("Est. Distance     : " + transitDistance + " km (via 2D Distance Matrix)");
+                    System.out.println("Status            : " + assignment.getStatus());
+                    System.out.println("========================================");
+
+                    if (volunteer == null) {
+                        System.out.println(">> Notice: All volunteers are currently busy. Assignment is queued for next available volunteer.");
+                    } else {
+                        userManager.save();
+                        System.out.println(">> Volunteer has been notified for pickup!");
+                    }
+                } catch (DonationExpiredException | InsufficientQuantityException e) {
+                    System.out.println("\n>> Allocation Error: " + e.getMessage());
                 }
             }
         } else {
@@ -578,10 +597,12 @@ public class MainMenu {
             System.out.println("4. View All Volunteer Assignments");
             System.out.println("5. View Full Community Impact Report");
             System.out.println("6. View System Event History");
-            System.out.println("7. Logout");
+            System.out.println("7. View Regional City Distance Matrix (2D Array)");
+            System.out.println("8. Check Background Expiry Checker Thread Status");
+            System.out.println("9. Logout");
             System.out.println("----------------------------------------");
 
-            int choice = InputValidator.readInt("Enter choice (1-7): ", 1, 7);
+            int choice = InputValidator.readInt("Enter choice (1-9): ", 1, 9);
             switch (choice) {
                 case 1:
                     printHeader("ALL REGISTERED USERS");
@@ -623,6 +644,24 @@ public class MainMenu {
                     InputValidator.pressEnterToContinue();
                     break;
                 case 7:
+                    CityDistanceMatrix.printDistanceTable();
+                    InputValidator.pressEnterToContinue();
+                    break;
+                case 8:
+                    printHeader("BACKGROUND EXPIRY CHECKER THREAD STATUS");
+                    if (expiryChecker != null) {
+                        System.out.println("Thread Name     : " + expiryChecker.getName());
+                        System.out.println("Thread Priority : " + expiryChecker.getPriority());
+                        System.out.println("Thread State    : " + expiryChecker.getState());
+                        System.out.println("Is Alive?       : " + expiryChecker.isAlive());
+                        System.out.println("Is Daemon?      : " + expiryChecker.isDaemon());
+                        System.out.println("Check Interval  : 10,000 ms (10 seconds)");
+                    } else {
+                        System.out.println("Expiry checker thread is not initialized.");
+                    }
+                    InputValidator.pressEnterToContinue();
+                    break;
+                case 9:
                     inAdminMenu = false;
                     System.out.println("\n>> Logged out from Admin account.");
                     break;

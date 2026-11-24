@@ -6,6 +6,7 @@ import model.FoodDonation;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.ListIterator;
 
 /**
  * Provides searching and sorting functionalities for food donations.
@@ -58,6 +59,23 @@ public class FoodSearch {
             }
         }
         return null;
+    }
+
+    /**
+     * Demonstrates ListIterator from Java Collections Framework.
+     * Iterates through donations sequentially to filter exact city matches.
+     */
+    public static ArrayList<FoodDonation> filterByLocationWithIterator(String location, ArrayList<FoodDonation> donations) {
+        ArrayList<FoodDonation> results = new ArrayList<>();
+        if (location == null || donations == null) return results;
+        ListIterator<FoodDonation> listIterator = donations.listIterator();
+        while (listIterator.hasNext()) {
+            FoodDonation d = listIterator.next();
+            if (d.getLocation() != null && d.getLocation().equalsIgnoreCase(location.trim())) {
+                results.add(d);
+            }
+        }
+        return results;
     }
 
     /**

@@ -7,21 +7,21 @@
 ### Q1: What real-world problem does the project solve?
 **Answer:**  
 In university messes, restaurants, hotels, and banquets, large quantities of safe, edible surplus food are prepared daily but discarded after peak hours. Meanwhile, local NGOs, orphanages, and community shelters struggle with daily food requirements.  
-Because there is no simple, direct communication channel, edible food ends up in landfills. **RePlate** solves this by offering a terminal-based coordination network that records surplus food, matches it to NGO requests based on food type, quantity, and location, assigns local volunteers for transport, and tracks the food until it is safely delivered.
+Because there is no simple, direct communication channel, edible food ends up in landfills. **RePlate** solves this by offering a terminal-based coordination network that records surplus food, matches it to NGO requests based on food type, quantity, and location, assigns local volunteers for transport, and tracks the food until it is safely delivered or auto-expired.
 
 ---
 
 ### Q2: What are the main classes in the system and their roles?
 **Answer:**  
-The system is divided across 4 student modules:
+The system is divided across 4 modular student areas (with 34 application classes/types):
 1. **Module 1 (User Management):**
    - `User` (abstract base class), `Donor`, `NGO`, `Volunteer`, `Admin`, and `UserManager`.
 2. **Module 2 (Food & Donation Management):**
    - `FoodItem`, `FoodDonation`, `FoodInventory`, `DonationManager`, and `FoodSearch`.
-3. **Module 3 (Request & Matching):**
-   - `DonationRequest`, `RequestManager`, `DonationMatcher`, `VolunteerAssignment`, and `AssignmentManager`.
-4. **Module 4 (Distribution & Reports):**
-   - `Pickup`, `Delivery`, `DistributionManager`, `DonationHistory`, `ImpactReport`, `FileManager`, and `MainMenu`.
+3. **Module 3 (Request, Matching & Logistics):**
+   - `DonationRequest`, `RequestManager`, `DonationMatcher`, `VolunteerAssignment`, `AssignmentManager`, and `CityDistanceMatrix`.
+4. **Module 4 (Distribution, Concurrency & System):**
+   - `Pickup`, `Delivery`, `DistributionManager`, `DonationHistory`, `ImpactReport`, `FileManager`, `MainMenu`, `DonationExpiryChecker`, and custom exceptions (`ValidationException`, `DonationExpiredException`, `InsufficientQuantityException`).
 
 ---
 
@@ -77,120 +77,142 @@ Polymorphism is demonstrated in two ways:
 
 ---
 
-### Q7: Where are Collections used in the project?
+### Q7: Where and why is Multithreading used?
 **Answer:**  
-We use three core collections from the Java Collections Framework:
-1. `ArrayList`
-2. `HashMap`
-3. `PriorityQueue`
+- **Purpose:** In real life, surplus food has a finite shelf-life. If uncollected, it must be marked as `EXPIRED` automatically without requiring manual donor intervention or freezing the main menu.
+- **Implementation:** Class `service.DonationExpiryChecker` extends `java.lang.Thread`.
+- **How it works:**
+  1. Instantiated in `MainMenu` with a check interval (e.g., 10 seconds).
+  2. Marked as a background daemon thread (`setDaemon(true)`).
+  3. Started with `.start()`, which triggers its `run()` method in a separate execution stack.
+  4. Periodically calls `donationManager.checkAndUpdateExpiredDonations()`.
+  5. Transitions between `RUNNABLE` and `TIMED_WAITING` via `Thread.sleep(intervalMillis)`.
+  6. When the user exits the application (Choice 6), `stopChecker()` calls `interrupt()` to awaken the thread from `sleep()`, and `join(2000)` to ensure it terminates cleanly before process exit.
 
 ---
 
-### Q8: Why is `ArrayList` used?
+### Q8: What is the Thread Lifecycle and how does RePlate demonstrate it?
 **Answer:**  
-- `ArrayList<User>`, `ArrayList<FoodDonation>`, and `ArrayList<DonationRequest>` are used because we need resizable, ordered lists.
-- They allow us to easily add new records at runtime, iterate through them sequentially to display lists, and pass them to search/sort algorithms.
+1. **NEW:** When `new DonationExpiryChecker(...)` is called.
+2. **RUNNABLE:** When `.start()` is called and the OS thread scheduler allocates CPU time for `run()`.
+3. **TIMED_WAITING:** When the thread invokes `Thread.sleep(10000)`.
+4. **BLOCKED:** When waiting to acquire the monitor lock on a `synchronized` method in `FoodInventory` or `DonationManager`.
+5. **TERMINATED:** When `run()` exits after detecting `isInterrupted() == true` or `running == false`.
 
 ---
 
-### Q9: Why is `HashMap` used?
+### Q9: Where is Synchronization used and why is it necessary?
 **Answer:**  
-- In a system with many users and donations, searching linearly through an `ArrayList` takes $O(n)$ time.
-- By using `HashMap<Integer, User>` and `HashMap<String, User>`, we achieve **$O(1)$ constant time lookup** when:
-  - Checking credentials during login (`usernameMap.get(username)`).
-  - Finding a user or donation by ID (`userMap.get(userId)`, `donationMap.get(id)`).
-  - Checking for duplicate usernames during registration.
+- **Shared Resource:** The in-memory collection of food donations (`FoodInventory.donationList` and `donationMap`).
+- **The Problem (Race Condition):** The main thread (donor adding/updating food, NGO allocating surplus food) and the background thread (`DonationExpiryChecker` scanning and modifying status) access the same collection at the same time. Without synchronization, concurrent modifications could lead to dirty reads, inconsistent quantities, or `ConcurrentModificationException`.
+- **The Solution:**
+  - Methods in `FoodInventory` (`addDonation`, `getDonationById`, `getAllDonations`, `getAvailableDonations`, `expireOutdatedDonations`) are marked `synchronized`.
+  - Mutating methods in `DonationManager` (`checkAndUpdateExpiredDonations`, `updateDonationQuantity`, `updateDonationStatus`, `cancelDonation`) are marked `synchronized`.
+  - Synchronizing on the `this` monitor ensures that only one thread can modify or iterate through donations at any given time, preventing race conditions.
 
 ---
 
-### Q10: Why is `PriorityQueue` used?
+### Q10: Where are 2D Arrays used in the project?
 **Answer:**  
-- An NGO's food request has a priority level: `LOW`, `MEDIUM`, `HIGH`, or `URGENT`.
-- In a disaster or emergency food shortage, urgent requests must be served before older low-priority requests.
-- `DonationRequest` implements `Comparable<DonationRequest>`, ordering requests by priority descending.
-- The `PriorityQueue<DonationRequest>` automatically ensures that `peek()` or `poll()` always returns the most urgent pending food request first, without having to manually sort the entire list repeatedly.
+- In class `util.CityDistanceMatrix`.
+- We maintain a `4 x 4` 2D integer array (`int[][] DISTANCE_MATRIX`) mapping pairwise distances between regional cities: Chandigarh, Mohali, Ludhiana, and Barnala:
+  ```java
+  private static final int[][] DISTANCE_MATRIX = {
+      {   0,  10, 105, 150 }, // Chandigarh
+      {  10,   0,  95, 140 }, // Mohali
+      { 105,  95,   0,  65 }, // Ludhiana
+      { 150, 140,  65,   0 }  // Barnala
+  };
+  ```
+- **Usage:**
+  - `CityDistanceMatrix.getDistance(cityA, cityB)` looks up cell `[i][j]` in $O(1)$ time.
+  - `DonationMatcher` uses `CityDistanceMatrix.isWithinRange(loc1, loc2, 25)` to evaluate whether an NGO is within practical transfer range (e.g. Chandigarh & Mohali = 10 km).
+  - Admin Menu Option 7 prints the 2D grid in clean tabular format.
 
 ---
 
-### Q11: Where is Exception Handling used?
+### Q11: Where are Collections used and why were they chosen?
 **Answer:**  
-1. **Custom Exception (`ValidationException`):**
-   - Created in `util.ValidationException` to signal validation failures such as negative quantities or empty text inputs.
-2. **Standard Exceptions Handled defensively:**
-   - `NumberFormatException` in `InputValidator`: caught when a user enters alphabets where a menu choice or quantity is required. The program notifies the user and re-prompts instead of crashing.
-   - `IOException` in `FileManager`: caught during file reading and writing if a file is missing or locked.
-   - Null checks and boundary checks throughout managers to prevent `NullPointerException` and `IndexOutOfBoundsException`.
+1. **`ArrayList`:** Used for sequential records (`ArrayList<User>`, `ArrayList<FoodDonation>`, `ArrayList<DonationRequest>`). Provides dynamic resizing and fast indexed access.
+2. **`HashMap`:** Used for key-value lookups (`HashMap<Integer, User>`, `HashMap<String, User>`). Provides **$O(1)$ constant time** lookup for instant login authentication and ID searches.
+3. **`PriorityQueue`:** Used in `RequestManager` to automatically serve urgent NGO food demands first (`URGENT` > `HIGH` > `MEDIUM` > `LOW`) using natural ordering defined by `Comparable<DonationRequest>`.
+4. **`Iterator`:** Used in `FoodInventory.expireOutdatedDonations()` to safely iterate over donations during background checks without index shift errors.
+5. **`ListIterator`:** Used in `FoodSearch.filterByLocationWithIterator()` to demonstrate bidirectional sequential collection traversal.
+6. **`Comparator`:** Used in `FoodSearch.sortByQuantity()` and `FoodSearch.sortByExpiry()` to sort collections without modifying model classes.
 
 ---
 
-### Q12: Where is File Handling used?
+### Q12: What custom exceptions exist and where are `throw` and `throws` used?
 **Answer:**  
-- Data persistence is implemented in `util.FileManager` without requiring an external database.
-- Uses `BufferedReader` and `FileReader` to load data into memory when the program starts.
-- Uses `BufferedWriter` and `FileWriter` to write updated records whenever donations, requests, or assignments change.
-- Text/CSV files are stored under `data/`:
+We have three custom checked exceptions in package `util`:
+1. `ValidationException`: Thrown when input validation fails (e.g. negative quantity, invalid email, invalid 10-digit phone number, invalid NGO registration format).
+2. `DonationExpiredException`: Thrown by `DonationMatcher.allocateQuantity()` if an NGO tries to claim a donation that has expired.
+3. `InsufficientQuantityException`: Thrown if an NGO requests more quantity than is available.
+- **Syntax Demonstrated:**
+  - `throw new DonationExpiredException(...)` explicitly creates and throws the exception object.
+  - `public int allocateQuantity(...) throws DonationExpiredException, InsufficientQuantityException` declares the exceptions in the method signature.
+  - Handled in `MainMenu` with a multi-catch block: `catch (DonationExpiredException | InsufficientQuantityException e)`.
+
+---
+
+### Q13: Where is `finally` used and what is the difference between `final`, `finally`, and `finalize`?
+**Answer:**  
+- **Where used:** In `FileManager.appendHistory(...)`, an explicit `finally` block guarantees that the `BufferedWriter` and `FileWriter` streams are closed even if an `IOException` occurs during writing.
+- **Viva Difference:**
+  - `final`: Keyword to declare constants (variables), prevent method overriding (methods), or prevent class inheritance (classes).
+  - `finally`: Block that always executes after `try-catch`, typically for resource cleanup (closing files, sockets).
+  - `finalize`: Deprecated method in `Object` called by Garbage Collector before reclaiming memory.
+
+---
+
+### Q14: Why is `StringBuilder` used instead of `String` concatenation?
+**Answer:**  
+- `String` in Java is immutable. Every `+` concatenation creates a new String object in the String pool and discards the old one, wasting memory.
+- `StringBuilder` is mutable. It appends text to an internal resizable character buffer without creating intermediate objects.
+- In RePlate, `StringBuilder` is used in:
+  1. `DistributionManager.displayReceipt()` to assemble multi-line receipts.
+  2. `ImpactReport.displayImpactReport()` to build the community statistics dashboard.
+  3. `FoodDonation.toCsv()` for fast CSV serialization.
+
+---
+
+### Q15: How does input validation work in the project?
+**Answer:**  
+Handled centrally in `util.InputValidator`:
+- **Email:** Uses regex `^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$`.
+- **Phone:** Uses regex `^[6-9]\\d{9}$` (valid 10-digit Indian mobile number).
+- **NGO Reg No:** Uses regex `^NGO-[A-Z]{2,4}-[0-9]{3,6}$` (e.g., `NGO-CH-105`).
+- **Numbers/Choices:** Catches `NumberFormatException`, displays clear feedback, and loops until valid input is given. The terminal never crashes on bad input.
+
+---
+
+### Q16: How does data persistence work?
+**Answer:**  
+- `FileManager` stores plain text CSV files under the `data/` directory:
   - `users.txt`
   - `donations.txt`
   - `requests.txt`
   - `assignments.txt`
   - `history.txt`
-- The application automatically creates the `data/` directory and files if they are not already present.
+- On startup, `BufferedReader` reads each line, parses CSV tokens, reconstructs the Java objects, and populates the in-memory collections.
+- Whenever a donation is added, request matched, or delivery completed, the updated collections are persisted using `BufferedWriter`.
+- All data survives application restarts.
 
 ---
 
-### Q13: Why are Enums used?
+### Q17: How does the complete Donor → NGO → Volunteer workflow work?
 **Answer:**  
-Instead of using loose Strings or magic numbers (which can cause typos and bugs), we use type-safe Java `enum`s:
-- `FoodCategory`: Limits input to `COOKED_FOOD`, `PACKAGED_FOOD`, `FRUITS`, `VEGETABLES`, `BAKERY`, `OTHER`.
-- `DonationStatus`: Enforces clear lifecycle states: `AVAILABLE`, `RESERVED`, `PICKED_UP`, `DELIVERED`, `CANCELLED`, `EXPIRED`.
-- `RequestPriority`: Associates discrete urgency levels with numerical priority values for PriorityQueue comparison.
-- `UserRole`: Controls role-based navigation for `DONOR`, `NGO`, `VOLUNTEER`, `ADMIN`.
+1. **Donor adds food:** Details (category, quantity, prep/expiry time, location) saved as `AVAILABLE`.
+2. **NGO requests food:** NGO specifies category, quantity, location, and priority.
+3. **DonationMatcher:** Checks category, available quantity, expiry status, and 2D matrix transfer distance. Allocates quantity and updates status.
+4. **Volunteer Assignment:** System finds an available volunteer, creates `VolunteerAssignment`, and sets volunteer availability to busy.
+5. **Pickup:** Volunteer marks pickup completed (`PICKED_UP`).
+6. **Delivery & Receipt:** Volunteer marks delivery completed (`DELIVERED`). Volunteer is released back to available, receipt is generated via `StringBuilder`, and transaction is logged in `history.txt`.
 
 ---
 
-### Q14: How does `DonationMatcher` work?
+### Q18: What are future improvements for this project?
 **Answer:**  
-`DonationMatcher` contains the matching algorithm (`findBestMatch`):
-1. Filters donations where status is `AVAILABLE` and quantity $> 0$.
-2. Checks that the `FoodCategory` matches the request category.
-3. Checks location compatibility (exact match, or compatible adjacent cities like Chandigarh and Mohali).
-4. Verifies the donation is not expired.
-5. Checks if the available quantity meets the requested quantity (prefers full matches, allows partial matches).
-6. Allocates the required quantity, deducts it from the donation, and sets the donation status to `RESERVED` if its quantity reaches 0.
-
----
-
-### Q15: How does the Donor → NGO → Volunteer workflow work?
-**Answer:**  
-1. **Donor adds food:** Donor inputs food name, category, quantity, preparation time, expiry time, and location.
-2. **NGO requests food:** NGO specifies category, quantity needed, delivery city, and priority.
-3. **Matcher matches & allocates:** `DonationMatcher` finds a compatible donation and subtracts the allocated quantity.
-4. **Volunteer assignment:** System assigns an available volunteer (`isAvailable = false`) and creates a `VolunteerAssignment`.
-5. **Pickup:** Volunteer logs into their dashboard and marks the food as picked up (`status = PICKED_UP`).
-6. **Delivery & Receipt:** Volunteer marks delivery completed (`status = DELIVERED`). The volunteer's status is reset to available (`isAvailable = true`), a receipt is generated, and the event is permanently logged in `history.txt`.
-
----
-
-### Q16: How does data persist after closing the application?
-**Answer:**  
-- Every time a user registers, donation is added, or delivery completes, the corresponding manager triggers `FileManager.save...()`, which writes CSV records to the `data/` text files.
-- When the application is launched again (`new MainMenu()`), each manager reads from the files in `data/` and repopulates the in-memory collections (`ArrayList` and `HashMap`).
-- This guarantees zero data loss between application restarts.
-
----
-
-### Q17: What happens when invalid input is entered?
-**Answer:**  
-- The terminal never crashes.
-- If a user inputs text when a number is expected, `InputValidator.readInt` catches `NumberFormatException`, displays `>> Error: Invalid number format. Please enter an integer.`, and re-prompts the user.
-- If a user enters an out-of-range menu number (e.g., choice 9 in a 1-6 menu), it warns them and loops until a valid choice is entered.
-- Empty fields and negative quantities are caught by `ValidationException`.
-
----
-
-### Q18: What could be improved in a future version?
-**Answer:**  
-1. **Multi-threading:** Add a background worker thread (`ScheduledExecutorService`) that periodically checks expiry timestamps and marks outdated donations as `EXPIRED`.
-2. **Automated Notifications:** Implement SMS or email notifications for volunteers when a new delivery is assigned.
-3. **Distance Calculation:** Calculate real-time distances between cities or areas using simulated GPS coordinates.
-4. **GUI / Web Dashboard:** Build a desktop JavaFX interface or a lightweight web interface while retaining the same clean business logic classes.
+1. **SMS/Push Alerts:** Integrate JavaMail API or SMS gateway to ping volunteers on assignment.
+2. **Database Integration:** Migrate from flat text files to relational JDBC (MySQL/PostgreSQL) using connection pooling.
+3. **GUI Front-End:** Build a JavaFX desktop dashboard while reusing the existing clean service and model classes.

@@ -43,39 +43,39 @@ public class DonationManager {
         String today = LocalDate.now().toString();
         addDonation(new FoodDonation(101, 2, "ABC College Mess", 
                 new FoodItem("Rice", FoodCategory.COOKED_FOOD, true), 
-                50, "05:00 PM", "09:00 PM", "Chandigarh", DonationStatus.AVAILABLE, today));
+                50, "05:00 PM", "11:59 PM", "Chandigarh", DonationStatus.AVAILABLE, today));
 
         addDonation(new FoodDonation(102, 3, "Green Leaf Restaurant", 
                 new FoodItem("Bread", FoodCategory.BAKERY, true), 
-                30, "04:00 PM", "10:00 PM", "Mohali", DonationStatus.AVAILABLE, today));
+                30, "04:00 PM", "11:59 PM", "Mohali", DonationStatus.AVAILABLE, today));
 
         addDonation(new FoodDonation(103, 2, "ABC College Mess", 
                 new FoodItem("Cooked Food", FoodCategory.COOKED_FOOD, true), 
-                40, "06:00 PM", "11:00 PM", "Ludhiana", DonationStatus.AVAILABLE, today));
+                40, "06:00 PM", "11:59 PM", "Ludhiana", DonationStatus.AVAILABLE, today));
 
         addDonation(new FoodDonation(104, 3, "Green Leaf Restaurant", 
                 new FoodItem("Fruits", FoodCategory.FRUITS, true), 
-                25, "02:00 PM", "08:00 PM", "Chandigarh", DonationStatus.AVAILABLE, today));
+                25, "02:00 PM", "11:59 PM", "Chandigarh", DonationStatus.AVAILABLE, today));
     }
 
-    public void addDonation(FoodDonation donation) {
+    public synchronized void addDonation(FoodDonation donation) {
         inventory.addDonation(donation);
         fileManager.saveDonations(inventory.getAllDonations());
     }
 
-    public FoodDonation getDonationById(int id) {
+    public synchronized FoodDonation getDonationById(int id) {
         return inventory.getDonationById(id);
     }
 
-    public ArrayList<FoodDonation> getAllDonations() {
+    public synchronized ArrayList<FoodDonation> getAllDonations() {
         return inventory.getAllDonations();
     }
 
-    public ArrayList<FoodDonation> getAvailableDonations() {
+    public synchronized ArrayList<FoodDonation> getAvailableDonations() {
         return inventory.getAvailableDonations();
     }
 
-    public ArrayList<FoodDonation> getDonationsByDonor(int donorId) {
+    public synchronized ArrayList<FoodDonation> getDonationsByDonor(int donorId) {
         ArrayList<FoodDonation> result = new ArrayList<>();
         for (FoodDonation d : inventory.getAllDonations()) {
             if (d.getDonorId() == donorId) {
@@ -85,7 +85,7 @@ public class DonationManager {
         return result;
     }
 
-    public boolean updateDonationQuantity(int donationId, int newQuantity) {
+    public synchronized boolean updateDonationQuantity(int donationId, int newQuantity) {
         FoodDonation d = inventory.getDonationById(donationId);
         if (d != null && d.getStatus() == DonationStatus.AVAILABLE) {
             d.setQuantity(newQuantity);
@@ -98,7 +98,7 @@ public class DonationManager {
         return false;
     }
 
-    public boolean updateDonationStatus(int donationId, DonationStatus newStatus) {
+    public synchronized boolean updateDonationStatus(int donationId, DonationStatus newStatus) {
         FoodDonation d = inventory.getDonationById(donationId);
         if (d != null) {
             d.setStatus(newStatus);
@@ -108,7 +108,7 @@ public class DonationManager {
         return false;
     }
 
-    public boolean cancelDonation(int donationId, int donorId) {
+    public synchronized boolean cancelDonation(int donationId, int donorId) {
         FoodDonation d = inventory.getDonationById(donationId);
         if (d != null && d.getDonorId() == donorId && d.getStatus() == DonationStatus.AVAILABLE) {
             d.setStatus(DonationStatus.CANCELLED);
@@ -118,7 +118,19 @@ public class DonationManager {
         return false;
     }
 
-    public int getNextDonationId() {
+    /**
+     * Critical section: Synchronized method invoked by background thread or main application.
+     * Periodically updates status of expired donations and persists changes to disk.
+     */
+    public synchronized int checkAndUpdateExpiredDonations() {
+        int expired = inventory.expireOutdatedDonations();
+        if (expired > 0) {
+            save();
+        }
+        return expired;
+    }
+
+    public synchronized int getNextDonationId() {
         int max = 100;
         for (FoodDonation d : inventory.getAllDonations()) {
             if (d.getDonationId() > max) {
@@ -128,7 +140,7 @@ public class DonationManager {
         return max + 1;
     }
 
-    public void save() {
+    public synchronized void save() {
         fileManager.saveDonations(inventory.getAllDonations());
     }
 }

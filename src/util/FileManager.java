@@ -295,11 +295,22 @@ public class FileManager {
     }
 
     public void appendHistory(String record) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(HISTORY_FILE, true))) {
+        BufferedWriter writer = null;
+        try {
+            writer = new BufferedWriter(new FileWriter(HISTORY_FILE, true));
             writer.write(record);
             writer.newLine();
         } catch (IOException e) {
             System.out.println(">> Error appending history: " + e.getMessage());
+        } finally {
+            // Demonstrates explicit finally block from Java syllabus for guaranteed resource closure
+            if (writer != null) {
+                try {
+                    writer.close();
+                } catch (IOException ex) {
+                    // Ignore stream closure exception
+                }
+            }
         }
     }
 

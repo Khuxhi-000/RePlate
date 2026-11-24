@@ -64,20 +64,24 @@ public class ImpactReport {
             else if (u instanceof Volunteer) volunteerCount++;
         }
 
-        System.out.println("\n========================================");
-        System.out.println("       COMMUNITY IMPACT REPORT");
-        System.out.println("========================================");
-        System.out.println("Total Donations Registered : " + totalDonations);
-        System.out.println("Total Food Surplus Handled : " + overallSurplusRecorded + " packets");
-        System.out.println("Total Food Distributed     : " + totalFoodDistributed + " packets");
-        System.out.println("Successful Deliveries      : " + successfulDeliveries);
-        System.out.println("Active Available Donations : " + activeDonations);
-        System.out.println("Expired/Cancelled Donations: " + expiredOrCancelled);
-        System.out.println("----------------------------------------");
-        System.out.println("Community Network Members:");
-        System.out.println(" - Active Donors           : " + donorCount);
-        System.out.println(" - Partner NGOs            : " + ngoCount);
-        System.out.println(" - Dedicated Volunteers    : " + volunteerCount);
-        System.out.println("========================================");
+        // Demonstrates StringBuilder from Java standard library for high-performance formatting
+        StringBuilder sb = new StringBuilder(512);
+        sb.append("\n========================================\n");
+        sb.append("       COMMUNITY IMPACT REPORT\n");
+        sb.append("========================================\n");
+        sb.append("Total Donations Registered : ").append(totalDonations).append("\n");
+        sb.append("Total Food Surplus Handled : ").append(overallSurplusRecorded).append(" packets\n");
+        sb.append("Total Food Distributed     : ").append(totalFoodDistributed).append(" packets\n");
+        sb.append("Successful Deliveries      : ").append(successfulDeliveries).append("\n");
+        sb.append("Active Available Donations : ").append(activeDonations).append("\n");
+        sb.append("Expired/Cancelled Donations: ").append(expiredOrCancelled).append("\n");
+        sb.append("----------------------------------------\n");
+        sb.append("Community Network Members:\n");
+        sb.append(" - Active Donors           : ").append(donorCount).append("\n");
+        sb.append(" - Partner NGOs            : ").append(ngoCount).append("\n");
+        sb.append(" - Dedicated Volunteers    : ").append(volunteerCount).append("\n");
+        sb.append("========================================\n");
+
+        System.out.print(sb.toString());
     }
 }
